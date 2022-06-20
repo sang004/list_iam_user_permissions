@@ -15,6 +15,13 @@ import boto3
 import json
 from datetime import date
 
+class SmartFormatter(argparse.HelpFormatter):
+
+    def _split_lines(self, text, width):
+        if text.startswith('R|'):
+            return text[2:].splitlines()  
+        # this is the RawTextHelpFormatter._split_lines
+        return argparse.HelpFormatter._split_lines(self, text, width)
 
 client = boto3.client('iam')
 
@@ -29,7 +36,7 @@ __maintainer__ = "Ang Shimin"
 __email__ = "angsm@gis.a-star.edu.sg"
 __status__ = "Development"
 
-parser = argparse.ArgumentParser(description='Script description')
+parser = argparse.ArgumentParser(description='Script list out all AWS IAM permissions of user(s)', formatter_class=SmartFormatter)
 group = parser.add_mutually_exclusive_group(required=True)
 
 # Optional Arguments
@@ -42,7 +49,10 @@ group.add_argument("-a", "--allusers",
 
 parser.add_argument("-o", "--outputmode",
                     required=True,
-                    help="1 for print and 2 for file")
+                    choices=['1', '2', '3'],
+                    help="R|1: json file containing only statements portion of policy, comma delimited\n"
+                         "2: json file, comma delimited iam policies\n"
+                         "3: print on console, comma delimited iam policies")
 
 args = parser.parse_args()
 
@@ -173,8 +183,11 @@ def output_json_statement_file( res_dict ):
     input: python dictionary
     output: <USERNAME>_<DDMONYYYY>.json
     '''
-
-    statement_arr = res_dict['PolicyVersion']['Document']['Statement']
+    print( res_dict )
+    try:
+        statement_arr = res_dict['PolicyVersion']['Document']['Statement']
+    except: 
+        statement_arr = res_dict['PolicyDocument']['Statement'] ## when a policy does not have multi-version (inline)
     with open(OUTFILE_NAME, 'a') as outfile:
         if os.stat(OUTFILE_NAME).st_size != 0:
             outfile.write(",\n")
