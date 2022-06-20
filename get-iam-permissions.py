@@ -14,6 +14,8 @@ import subprocess
 import boto3
 import json
 from datetime import date
+from pathlib import Path
+
 
 class SmartFormatter(argparse.HelpFormatter):
 
@@ -27,6 +29,7 @@ client = boto3.client('iam')
 
 OUTPUT_MODE = None
 OUTFILE_NAME = "iam_permissions.json"
+OUTDIR = "./OUTPUT_" + os.path.basename(__file__)
 
 __author__ = "Ang Shimin"
 __credits__ = ["Ang Shimin"]
@@ -183,7 +186,7 @@ def output_json_statement_file( res_dict ):
     input: python dictionary
     output: <USERNAME>_<DDMONYYYY>.json
     '''
-    print( res_dict )
+
     try:
         statement_arr = res_dict['PolicyVersion']['Document']['Statement']
     except: 
@@ -203,8 +206,9 @@ def main():
     global OUTFILE_NAME
 
     today = date.today()
-
     datenow = today.strftime("%d%b%Y")
+    if not os.path.exists(OUTDIR):
+        os.mkdir(OUTDIR)
 
     if args.outputmode:
         OUTPUT_MODE = args.outputmode
@@ -213,7 +217,7 @@ def main():
         username_arr = get_all_users()
         for u in username_arr:
             print( "Looking at IAM username-> %s" % (u) )
-            OUTFILE_NAME = "iam_permissions_%s_%s.json" % ( u, datenow )
+            OUTFILE_NAME = "%s/iam_permissions_%s_%s.json" % ( OUTDIR, u, datenow )
             open( OUTFILE_NAME, 'w' ) # erase old file
 
             get_managed_policies( u )
@@ -221,7 +225,7 @@ def main():
             get_user_iam_groups( u )
 
     if args.username:
-        OUTFILE_NAME = "iam_permissions_%s_%s.json" % ( args.username, datenow )
+        OUTFILE_NAME = "%s/iam_permissions_%s_%s.json" % ( OUTDIR, args.username, datenow )
         open( OUTFILE_NAME, 'w' ) # erase old file
 
         get_managed_policies( args.username )
