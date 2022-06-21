@@ -29,7 +29,8 @@ client = boto3.client('iam')
 
 OUTPUT_MODE = None
 OUTFILE_NAME = "iam_permissions.json"
-OUTDIR = "./OUTPUT_" + os.path.basename(__file__)
+OUTFILE_POLICY_NAME = "iam_policyname.out"
+OUTDIR = "./OUTPUT_" + os.path.basename(__file__).replace(".py", "")
 
 __author__ = "Ang Shimin"
 __credits__ = ["Ang Shimin"]
@@ -77,6 +78,7 @@ def get_managed_policies( aws_usr ):
         p_ver = client.get_policy( PolicyArn=p_arn )['Policy']['DefaultVersionId']
         managed_policies = client.get_policy_version( PolicyArn=p_arn, VersionId=p_ver  )
         print_or_file( managed_policies, OUTPUT_MODE )
+        output_policy_name_file( p_name )
 
 
 def get_inline_policies( aws_usr ):
@@ -92,6 +94,7 @@ def get_inline_policies( aws_usr ):
     for p_name in usr_inlinepolicy_arr:
         user_policies = client.get_user_policy( UserName=aws_usr, PolicyName=p_name )
         print_or_file( user_policies, OUTPUT_MODE ) 
+        output_policy_name_file( p_name )
 
 
 def get_user_iam_groups( aws_usr ):
@@ -117,6 +120,7 @@ def get_user_iam_groups( aws_usr ):
             p_ver = client.get_policy( PolicyArn=p_arn )['Policy']['DefaultVersionId']
             managed_policies = client.get_policy_version( PolicyArn=p_arn, VersionId=p_ver  )
             print_or_file( managed_policies, OUTPUT_MODE )
+            output_policy_name_file( p_name )
 
         # Inline Policies on the IAM Group
         grp_policynames_arr = client.list_group_policies( GroupName=g['GroupName'] )['PolicyNames']
@@ -124,6 +128,7 @@ def get_user_iam_groups( aws_usr ):
         for n in grp_policynames_arr:
             grp_policy = client.get_group_policy( GroupName=g['GroupName'], PolicyName=n )
             print_or_file( grp_policy, OUTPUT_MODE )
+            output_policy_name_file( n )
 
 
 def get_all_users():
@@ -180,6 +185,17 @@ def output_json_file( res_dict ):
         json.dump( res_dict, outfile, indent = 4, default=str )
 
 
+def output_policy_name_file( policy_name ):
+     '''
+     outputs policy names onto a file
+     input: policy name
+     output <USERNAME>_policyname_<DDMONYYYY>.out
+     '''
+
+     with open(OUTFILE_POLICY_NAME, 'a') as outfilepol:
+            outfilepol.write( "%s\n" % (policy_name) )
+
+
 def output_json_statement_file( res_dict ):
     '''
     outputs only statement portion of iam policy into json formatted dict onto a .json file
@@ -204,6 +220,7 @@ def output_json_statement_file( res_dict ):
 def main():
     global OUTPUT_MODE   
     global OUTFILE_NAME
+    global OUTFILE_POLICY_NAME
 
     today = date.today()
     datenow = today.strftime("%d%b%Y")
@@ -218,7 +235,9 @@ def main():
         for u in username_arr:
             print( "Looking at IAM username-> %s" % (u) )
             OUTFILE_NAME = "%s/iam_permissions_%s_%s.json" % ( OUTDIR, u, datenow )
+            OUTFILE_POLICY_NAME = "%s/iam_policynames_%s_%s.out" % ( OUTDIR, u, datenow )
             open( OUTFILE_NAME, 'w' ) # erase old file
+            open( OUTFILE_POLICY_NAME, 'w')
 
             get_managed_policies( u )
             get_inline_policies( u )
@@ -226,7 +245,10 @@ def main():
 
     if args.username:
         OUTFILE_NAME = "%s/iam_permissions_%s_%s.json" % ( OUTDIR, args.username, datenow )
+        OUTFILE_POLICY_NAME = "%s/iam_policynames_%s_%s.out" % ( OUTDIR, args.username, datenow )
         open( OUTFILE_NAME, 'w' ) # erase old file
+        open( OUTFILE_POLICY_NAME, 'w')
+        print( OUTFILE_POLICY_NAME )
 
         get_managed_policies( args.username )
         get_inline_policies( args.username )
